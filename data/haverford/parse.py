@@ -1,3 +1,5 @@
+import operator
+
 class parser:
     def haverford_parse_prof_rooms_times_class(self, file):
         """" A function used on haverford data, returns professors list, rooms list and time slots list"""
@@ -70,3 +72,27 @@ class parser:
                 pref_list_line = lines[i].split('\t')[1]
                 pref_dict[student_id] = [int(x) for x in pref_list_line.split()]
         return pref_dict
+    
+    def count_class_size(self, pref_dict):
+        sizes = {}
+        for x in pref_dict:
+            for index in set(pref_dict[x]):
+                if index in sizes.keys():
+                    sizes[index] += 1
+                else:
+                    sizes[index] = 1
+        # n is the sorted classes list according to popularity
+        # content in n: (class id, popularity)
+        n = sorted(sizes.items(), key=operator.itemgetter(1))
+        n.reverse()
+        return n
+    
+    def sanitize_classes(self, hc_classes, classes):
+        """classes: [(class_id, popularity)]
+            hc_classes: [classes_id]
+        """
+        sanitized = []
+        for pair in classes:
+            if pair[0] in hc_classes:
+                sanitized.append(pair)
+        return sanitized

@@ -54,20 +54,6 @@ def haverford_reconstruct_time_slots(time_slots):
             times.append((day, slot))
     return times
 
-def count_class_size(pref_dict):
-    sizes = {}
-    for x in pref_dict:
-        for index in set(pref_dict[x]):
-            if index in sizes.keys():
-                sizes[index] += 1
-            else:
-                sizes[index] = 1
-    # n is the sorted classes list according to popularity
-    # content in n: (class id, popularity)
-    n = sorted(sizes.items(), key=operator.itemgetter(1))
-    n.reverse()
-    return n
-
 def init_overlapping_schedule(overlapping_slots, rooms):
     """A function that initialize a scheduling table for overlapping time slots"""
     num_rows = 0
@@ -90,7 +76,8 @@ def fill_schedule(schedule, room_dict, Position,classes, i, students, professors
             if room[0] in possible_rooms:
                 possible_room_index[index] = room
         popularity = classes[i][1]
-        index, t, cap = find_valid_reverse_room(schedule, popularity, possible_room_index, professors, class_id)
+        # index, t, cap = find_valid_reverse_room(schedule, popularity, possible_room_index, professors, class_id)
+        index, t, cap = find_valid_room(schedule, popularity, possible_room_index,professors, class_id)
         if t == None:
             # Corner cases: when a specific room has very small capacity, so that the current class c cannot fit in any time of this room, and other rooms are all filled also.
             for ava_r in range(len(ava_rooms)):
@@ -149,15 +136,21 @@ def scheduling(classes, students, professors, times, rooms, hc_classes, overlapp
     # print(room_dict)
     return Schedule+overlapping_schedule, Position, room_dict, over_Position
 
-def simulatedAnnealing(initialSchedule, initialPosition, interationMax, initial_temp, evaluation):
+def simulatedAnnealing(initialSchedule, initialPosition, iterationMax, initial_temp, evaluation):
+    # This is not considering department buildings
+    room_index_dict = {}
+    index = 0
+    for room in evaluation.rooms:
+        room_index_dict[index] = room
+        index += 1
     temp_change_rate = 0.3
     curSchedule = initialSchedule
     bestSchedule = curSchedule
     curbestSatis = satisCalc(evaluation)
     curSatis = curbestSatis
     cur_temp = initial_temp # set as temp value, needs more research. TODO.
-    for i in range (interationMax):
-        neighborSchedule, neighborPosition = createNeighborSchedule(evaluation)
+    for i in range (iterationMax):
+        neighborSchedule, neighborPosition = createNeighborSchedule(evaluation, room_index_dict)
         evaluation.setSchedule(neighborSchedule, neighborPosition)
         neighborSatis = satisCalc(evaluation)
         #TODO change of temp 
@@ -172,14 +165,21 @@ def simulatedAnnealing(initialSchedule, initialPosition, interationMax, initial_
             curSchedule = neighborSchedule
     return bestSchedule, curbestSatis
 
-def createNeighborSchedule(evaluation):
+def createNeighborSchedule(evaluation, room_index_dict):
     """ A function that creates a neighboring solution to the problem, by moving a random course to a random empty time slot.
         Data such as schedule, position, students, pref, rooms, classes can be found in evaluation.
     """
-    # TODO
     # create a new copy of schedule and position so that the original copies will not be changed in any ways.
     NeighborSchedule = evaluation.schedule.copy() 
     NeighborPosition = evaluation.position.copy()
+    # randomly choose a class
+    ran_class_pair = random.choice(evaluation.classes)
+    ran_class_id = ran_class_pair[0]
+    ran_class_cap = ran_class_pair[1]
+    room_index, t, capacity = find_valid_room(NeighborSchedule, ran_class_cap, room_index_dict, evaluation.professors, ran_class_id)
+    if not t== None:
+        NeighborSchedule[t][room_index] = ran_class_id
+        NeighborPosition[ran_class_id] = (t,room_index)
     return NeighborSchedule, NeighborPosition
 
 def satisCalc(evaluation):
@@ -294,13 +294,20 @@ time_no_dup = haverford_reconstruct_time_slots(time_no_dup)
 
 pref_dict = parser.haverford_parse_pref(sys.argv[2])
 students = pref_dict.keys()
-classes = count_class_size(pref_dict)
+classes = parser.count_class_size(pref_dict)
 rooms = sort_room_cap(rooms)
 schedule, position, room_dict, over_Position = scheduling(classes, students, professors, time_no_dup, rooms, hc_classes, time_group,class_major,depart_build)
 end = time.time()
 student_in_class = get_students_in_class(pref_dict, room_dict)
 write_schedule_to_file(student_in_class, professors, room_dict, schedule, sys.argv[3])
 
-eval = estimation(students, pref_dict, schedule, position, classes, rooms)
+sanitized = parser.sanitize_classes(hc_classes, classes)
+eval = estimation(students, pref_dict, schedule, position, sanitized, rooms, professors)
 print("satisfaction of greedy: {}".format(eval.get_eval()))
 print("runtime: {}".format(end-start))
+
+# start of simulated annealing
+iterationMax = 100
+initial_temp = 100
+bestsche, best_result = simulatedAnnealing(eval.schedule, eval.position, iterationMax, initial_temp, eval)
+print(best_result)

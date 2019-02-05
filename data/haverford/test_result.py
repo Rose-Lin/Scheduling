@@ -1,12 +1,13 @@
 class estimation:
-    def __init__(self, s, Pref, Schedule, Position, classes, rooms):
+    def __init__(self, s, Pref, Schedule, Position, classes, rooms, professors):
         self.s = s
         self.pref = Pref
         self.schedule = Schedule
         self.position = Position
         self.classes = classes
         self.rooms = rooms
-
+        self.professors = professors
+        
     def setSchedule(self,newSchedule, newPosition):
         self.schedule = newSchedule
         self.position = newPosition
