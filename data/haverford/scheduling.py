@@ -150,6 +150,7 @@ def simulatedAnnealing(initialSchedule, initialPosition, iterationMax, initial_t
     curSatis = curbestSatis
     cur_temp = initial_temp # set as temp value, needs more research. TODO.
     for i in range (iterationMax):
+        # neighborSchedule, neighborPosition = createNeighborSchedule_greedy(evaluation, room_index_dict, i)
         neighborSchedule, neighborPosition = createNeighborSchedule(evaluation, room_index_dict)
         evaluation.setSchedule(neighborSchedule, neighborPosition)
         neighborSatis = satisCalc(evaluation)
@@ -176,11 +177,35 @@ def createNeighborSchedule(evaluation, room_index_dict):
     ran_class_pair = random.choice(evaluation.classes)
     ran_class_id = ran_class_pair[0]
     ran_class_cap = ran_class_pair[1]
+    old_time = evaluation.position[ran_class_id][0]
+    old_room = evaluation.position[ran_class_id][1]
     room_index, t, capacity = find_valid_room(NeighborSchedule, ran_class_cap, room_index_dict, evaluation.professors, ran_class_id)
     if not t== None:
+        NeighborSchedule[old_time][old_room] = 0
         NeighborSchedule[t][room_index] = ran_class_id
         NeighborPosition[ran_class_id] = (t,room_index)
     return NeighborSchedule, NeighborPosition
+
+def createNeighborSchedule_greedy(evaluation, room_index_dict, i):
+    """ A function that creates a neighboring solution to the problem, by moving the most popular course to a valid empty time slot.
+        Data such as schedule, position, students, pref, rooms, classes can be found in evaluation.
+    """
+    # create a new copy of schedule and position so that the original copies will not be changed in any ways.
+    NeighborSchedule = evaluation.schedule.copy()
+    NeighborPosition = evaluation.position.copy()
+    # choose the most popular class indexed by i
+    target_class = evaluation.classes[i]
+    target_class_id = target_class[0]
+    target_class_cap = target_class[1]
+    old_time = evaluation.position[target_class_id][0]
+    old_room = evaluation.position[target_class_id][1]
+    room_index, t, capacity = find_valid_room(NeighborSchedule, target_class_cap, room_index_dict, evaluation.professors, target_class_id)
+    if not t== None:
+        NeighborSchedule[old_time][old_room] = 0
+        NeighborSchedule[t][room_index] = target_class_id
+        NeighborPosition[target_class_id] = (t,room_index)
+    return NeighborSchedule, NeighborPosition
+
 
 def satisCalc(evaluation):
     """A function that returns the satisfaction rate of the curent schedule associated with evaluation."""
