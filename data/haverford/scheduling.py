@@ -77,7 +77,7 @@ def fill_schedule(schedule, room_dict, Position,classes, i, students, professors
                 possible_room_index[index] = room
         popularity = classes[i][1]
         # index, t, cap = find_valid_reverse_room(schedule, popularity, possible_room_index, professors, class_id)
-        index, t, cap = find_valid_room(schedule, popularity, possible_room_index,professors, class_id)
+        index, t, cap = find_valid_room(schedule, popularity, possible_room_index, professors, class_id)
         if t == None:
             # Corner cases: when a specific room has very small capacity, so that the current class c cannot fit in any time of this room, and other rooms are all filled also.
             for ava_r in range(len(ava_rooms)):
@@ -137,7 +137,6 @@ def scheduling(classes, students, professors, times, rooms, hc_classes, overlapp
     return Schedule+overlapping_schedule, Position, room_dict, over_Position
 
 def simulatedAnnealing(initialSchedule, initialPosition, iterationMax, initial_temp, evaluation):
-    # This is not considering department buildings
     room_index_dict = {}
     index = 0
     for room in evaluation.rooms:
@@ -332,7 +331,7 @@ print("satisfaction of greedy: {}".format(eval.get_eval()))
 print("runtime: {}".format(end-start))
 
 # start of simulated annealing
-iterationMax = 100
-initial_temp = 100
-bestsche, best_result = simulatedAnnealing(eval.schedule, eval.position, iterationMax, initial_temp, eval)
-print(best_result)
+# iterationMax = 100
+# initial_temp = 100
+# bestsche, best_result = simulatedAnnealing(eval.schedule, eval.position, iterationMax, initial_temp, eval)
+# print(best_result)
