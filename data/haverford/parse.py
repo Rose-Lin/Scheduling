@@ -27,7 +27,7 @@ class parser:
             # class_line_num is the line of which the information about classes and teachers starts
             class_line_num = 1+room_line_num+total_rooms
             total_classes = int(lines[class_line_num].split('\t')[1])
-            # total_teachers = int(lines[class_line_num+1].split('\t')[1])
+            total_teachers = int(lines[class_line_num+1].split('\t')[1])
             # profs is a dictrionary, with keys as class id and professors id as value
             profs = {}
             # haverford classes excluding labs and bmc classes
