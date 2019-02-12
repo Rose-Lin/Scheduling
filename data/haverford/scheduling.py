@@ -271,7 +271,7 @@ def empty_timeslot(Schedule, room_id, professors, class_id, index):
 
 def sort_room_cap(Class_list):
     Class_list.sort(key = lambda x: x[1])
-    Class_list.reverse()
+    # Class_list.reverse()
     # Important!!!!!
     # Wether to reverse the list depends on how many rooms there are and the room capacity
     return Class_list
