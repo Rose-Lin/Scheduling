@@ -2,7 +2,8 @@ import sys
 import time
 import operator
 import random
-import math
+from decimal import *
+from math import e
 from parse import *
 from test_result import estimation
 
@@ -102,15 +103,10 @@ def fill_schedule(schedule, room_dict, Position,classes, i, students, professors
 # rooms should also be sorted list in increasing order of capacity (room_id, cap)
 # overlapping_slots is a dictrionary of overlapping time slots. e.g. {'T,H': [[(1:00PM, 4:00PM), (2:30PM, 4:00PM),(12:00PM, 1:30PM)]]}
 # times is a dictrionary of non-overlapping time slots
-def scheduling(classes, students, professors, times, rooms, hc_classes, overlapping_slots, class_department, department_build):
+def scheduling(classes, students, professors, times, rooms, hc_classes, overlapping_slots, class_department, department_build, room_index_dict):
     # schedule for non-overlapping time slots
     Schedule = [[0 for y in rooms] for x in times]
     overlapping_schedule = init_overlapping_schedule(overlapping_slots, rooms) # TODO: variable name
-    room_index_dict = {}
-    index = 0
-    for room in rooms:
-        room_index_dict[index] = room
-        index += 1
     # Position is a dict keyed with class id
     Position = {}
     # room_dict is a dictrionary keyed with class id and (time slot,room id) in the schedule as value
@@ -137,35 +133,40 @@ def scheduling(classes, students, professors, times, rooms, hc_classes, overlapp
     return Schedule+overlapping_schedule, Position, room_dict, over_Position
 
 def simulatedAnnealing(initialSchedule, initialPosition, iterationMax, initial_temp, evaluation):
-    room_index_dict = {}
-    index = 0
-    for room in evaluation.rooms:
-        room_index_dict[index] = room
-        index += 1
-    temp_change_rate = 0.3
+    getcontext().prec = 6
+    getcontext().traps[Overflow] = 0
+    temp_change_rate = Decimal(0.09)
     curSchedule = initialSchedule
     bestSchedule = curSchedule
     curbestSatis = satisCalc(evaluation)
     curSatis = curbestSatis
-    cur_temp = initial_temp # set as temp value, needs more research. TODO.
-    for i in range (iterationMax):
-        # neighborSchedule, neighborPosition = createNeighborSchedule_greedy(evaluation, room_index_dict, i)
-        neighborSchedule, neighborPosition = createNeighborSchedule(evaluation, room_index_dict)
-        evaluation.setSchedule(neighborSchedule, neighborPosition)
-        neighborSatis = satisCalc(evaluation)
-        #TODO change of temp 
-        if curSatis < neighborSatis:
-            curSchedule = neighborSchedule
-            curSatis = neighborSatis
-            if neighborSatis > curbestSatis:
-                bestSchedule = neighborSchedule
+    cur_temp = Decimal(initial_temp) # set as temp value, needs more research. TODO.
+    T_min = Decimal(0.01)
+    while cur_temp > T_min:
+        for i in range (iterationMax):
+            neighborSchedule, neighborPosition = createNeighborSchedule_greedy(evaluation, i%len(evaluation.classes))
+            # neighborSchedule, neighborPosition = createNeighborSchedule(evaluation)
+            evaluation.setSchedule(neighborSchedule, neighborPosition)
+            neighborSatis = satisCalc(evaluation)
+            # cur_temp = Decimal(cur_temp*(1-temp_change_rate)) #only apply this when use createNeighborSchedule_greedy
+            if curSatis < neighborSatis:
+                curSchedule = neighborSchedule
+                curSatis = neighborSatis
+                if neighborSatis > curbestSatis:
+                    bestSchedule = neighborSchedule
+                    curbestSatis = neighborSatis
+                # print("accept")
+            elif Decimal(e)**(Decimal((curSatis - neighborSatis)/Decimal(cur_temp))) > random.uniform(12.8,13) and Decimal(e)**(Decimal((curSatis - neighborSatis)/Decimal(cur_temp))) < random.uniform(14,14.2):
+                # TODO random() function
+                # print("!!! {} {} {}".format((curSatis - neighborSatis), (cur_temp), (Decimal(e)**(Decimal((curSatis - neighborSatis)/Decimal(cur_temp))))))
+                curSchedule = neighborSchedule
                 curbestSatis = neighborSatis
-        elif(math.exp(float(curSatis - neighborSatis)/cur_temp) > 100):
-            # TODO random() function
-            curSchedule = neighborSchedule
+                print("jump out {} {}".format(Decimal(e)**(Decimal((curSatis - neighborSatis)/Decimal(cur_temp))), (curbestSatis)))
+        cur_temp = Decimal(cur_temp*(1-temp_change_rate)) #only apply this when use createNeighborSchedule_greedy
+        print(curbestSatis, cur_temp, Decimal(e)**(Decimal((curSatis - neighborSatis)/Decimal(cur_temp))))
     return bestSchedule, curbestSatis
 
-def createNeighborSchedule(evaluation, room_index_dict):
+def createNeighborSchedule(evaluation):
     """ A function that creates a neighboring solution to the problem, by moving a random course to a random empty time slot.
         Data such as schedule, position, students, pref, rooms, classes can be found in evaluation.
     """
@@ -178,14 +179,14 @@ def createNeighborSchedule(evaluation, room_index_dict):
     ran_class_cap = ran_class_pair[1]
     old_time = evaluation.position[ran_class_id][0]
     old_room = evaluation.position[ran_class_id][1]
-    room_index, t, capacity = find_valid_room(NeighborSchedule, ran_class_cap, room_index_dict, evaluation.professors, ran_class_id)
+    room_index, t, capacity = find_valid_room(NeighborSchedule, ran_class_cap, evaluation.room_index_dict, evaluation.professors, ran_class_id)
     if not t== None:
         NeighborSchedule[old_time][old_room] = 0
         NeighborSchedule[t][room_index] = ran_class_id
         NeighborPosition[ran_class_id] = (t,room_index)
     return NeighborSchedule, NeighborPosition
 
-def createNeighborSchedule_greedy(evaluation, room_index_dict, i):
+def createNeighborSchedule_greedy(evaluation, i):
     """ A function that creates a neighboring solution to the problem, by moving the most popular course to a valid empty time slot.
         Data such as schedule, position, students, pref, rooms, classes can be found in evaluation.
     """
@@ -193,18 +194,18 @@ def createNeighborSchedule_greedy(evaluation, room_index_dict, i):
     NeighborSchedule = evaluation.schedule.copy()
     NeighborPosition = evaluation.position.copy()
     # choose the most popular class indexed by i
+    # If moving the least popular class, change i to -i
     target_class = evaluation.classes[i]
     target_class_id = target_class[0]
     target_class_cap = target_class[1]
     old_time = evaluation.position[target_class_id][0]
     old_room = evaluation.position[target_class_id][1]
-    room_index, t, capacity = find_valid_room(NeighborSchedule, target_class_cap, room_index_dict, evaluation.professors, target_class_id)
+    room_index, t, capacity = find_valid_room(NeighborSchedule, target_class_cap, evaluation.room_index_dict, evaluation.professors, target_class_id)
     if not t== None:
         NeighborSchedule[old_time][old_room] = 0
         NeighborSchedule[t][room_index] = target_class_id
         NeighborPosition[target_class_id] = (t,room_index)
     return NeighborSchedule, NeighborPosition
-
 
 def satisCalc(evaluation):
     """A function that returns the satisfaction rate of the curent schedule associated with evaluation."""
@@ -303,8 +304,8 @@ def get_students_in_class(pref_dict, room_dict):
                         students[c] = [s]
     return students
 
-if len(sys.argv) != 4:
-    print("Usage: " + 'python3' + " <constraints.txt> <student_prefs.txt> <schedule.txt>")
+if len(sys.argv) != 5:
+    print("Usage: " + 'python3' + " <constraints.txt> <student_prefs.txt> <schedule_greedy.txt> <schedule_SA.txt")
     exit(1)
 start = time.time()
 
@@ -320,18 +321,26 @@ pref_dict = parser.haverford_parse_pref(sys.argv[2])
 students = pref_dict.keys()
 classes = parser.count_class_size(pref_dict)
 rooms = sort_room_cap(rooms)
-schedule, position, room_dict, over_Position = scheduling(classes, students, professors, time_no_dup, rooms, hc_classes, time_group,class_major,depart_build)
+room_index_dict = {}
+index = 0
+for room in rooms:
+    room_index_dict[index] = room
+    index += 1
+schedule, position, room_dict, over_Position = scheduling(classes, students, professors, time_no_dup, rooms, hc_classes, time_group,class_major,depart_build, room_index_dict)
 end = time.time()
 student_in_class = get_students_in_class(pref_dict, room_dict)
 write_schedule_to_file(student_in_class, professors, room_dict, schedule, sys.argv[3])
 
 sanitized = parser.sanitize_classes(hc_classes, classes)
-eval = estimation(students, pref_dict, schedule, position, sanitized, rooms, professors)
+eval = estimation(students, pref_dict, schedule, position, sanitized, rooms, professors, room_index_dict)
 print("satisfaction of greedy: {}".format(eval.get_eval()))
 print("runtime: {}".format(end-start))
 
 # start of simulated annealing
-# iterationMax = 100
-# initial_temp = 100
-# bestsche, best_result = simulatedAnnealing(eval.schedule, eval.position, iterationMax, initial_temp, eval)
-# print(best_result)
+iterationMax = len(eval.classes)
+initial_temp = Decimal(1)
+bestsche, best_result = simulatedAnnealing(eval.schedule, eval.position, iterationMax, initial_temp, eval)
+print(best_result)
+# print(bestsche)
+# eval.displaySchedule()
+write_schedule_to_file(student_in_class, professors, room_dict, schedule, sys.argv[4])
