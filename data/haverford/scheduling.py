@@ -71,8 +71,8 @@ def simulatedAnnealing(initialSchedule, initialPosition, iterationMax, initial_t
     # while cur_temp > T_min:
     for i in range (iterationMax):
         # hybrid SA
-        neighborSchedule, neighborPosition = createNeighborSchedule_greedy(evaluation, i%len(evaluation.classes))
-        # neighborSchedule, neighborPosition = createNeighborSchedule(evaluation)
+        # neighborSchedule, neighborPosition = createNeighborSchedule_greedy(evaluation, i%len(evaluation.classes))
+        neighborSchedule, neighborPosition = createNeighborSchedule(evaluation)
         evaluation.setSchedule(neighborSchedule, neighborPosition)
         neighborSatis = satisCalc(evaluation)
         cur_temp = Decimal(cur_temp*(1-temp_change_rate)) #only apply this when use createNeighborSchedule_greedy
@@ -157,6 +157,13 @@ def find_valid_room_SA(Schedule, threshold, room_index_dict, professors, class_i
         if cap >= threshold:
             room_id = rid
             capacity = cap
+            index = random.randint(index, len(room_index_dict)-1) #83.4% with 5000 iteration
+            # if index < len(room_index_dict)-1:
+            #     index += 1    #around 82.4% wiht 5000 iteration
+            # if index < len(room_index_dict)-20:
+            #     index += 20    #around 84.5% wiht 5000 iteration
+            # 83.67% without further manipulating index at all with 5000 iteration
+            # 82.23% complete randomness with 5000 iteration
             t = empty_timeslot_SA(Schedule, room_id, professors, class_id, index, room_index_dict)
             if not t == None:
                 break
@@ -164,12 +171,6 @@ def find_valid_room_SA(Schedule, threshold, room_index_dict, professors, class_i
 
 def empty_timeslot_SA(Schedule, room_id, professors, class_id, index, room_index_dict):
     """Different from greedy: Find any room that is large enough, instead of finding one that is as small as possible to hold the popularity"""
-    # index = random.randint(index, len(room_index_dict)-1) #rarely getting satisfaction rate higher than 80% with 5000 iteration
-    # if index < len(room_index_dict)-1:
-    #     index += 1    #around 77.5% wiht 5000 iteration
-    if index < len(room_index_dict)-20:
-        index += 20    #around 81.2% wiht 5000 iteration
-    # 83.67% without manipulating index at all
     for row in range (len( Schedule)):
         professor_conflict = False
         if Schedule[row][index] == 0:
