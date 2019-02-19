@@ -6,6 +6,7 @@ from decimal import *
 from math import e
 from parse import *
 from test_result import estimation
+from greedy import *
 
 def get_dup_time_slot_dict(time_slots):
     # take in a dictrionary of time slots and output a dictionary where key is weekdays and value is the list of list of
@@ -55,84 +56,9 @@ def haverford_reconstruct_time_slots(time_slots):
             times.append((day, slot))
     return times
 
-def init_overlapping_schedule(overlapping_slots, rooms):
-    """A function that initialize a scheduling table for overlapping time slots"""
-    num_rows = 0
-    for days in overlapping_slots.keys():
-        for group in overlapping_slots[days]:
-            num_rows += len(group)-1
-    overlapping_schedule= [[0 for y in rooms] for x in range(num_rows)]
-    return overlapping_schedule
-
-def fill_schedule(schedule, room_dict, Position,classes, i, students, professors,times, room_index_dict, hc_classes, ava_rooms, class_department, department_build):
-    while i < len(classes):
-        class_id = classes[i][0]
-        if not class_id in hc_classes:
-            i += 1
-            continue
-        major = class_department[class_id]
-        possible_rooms = department_build[major]
-        possible_room_index = {}
-        for index, room in room_index_dict.items():
-            if room[0] in possible_rooms:
-                possible_room_index[index] = room
-        popularity = classes[i][1]
-        # index, t, cap = find_valid_reverse_room(schedule, popularity, possible_room_index, professors, class_id)
-        index, t, cap = find_valid_room(schedule, popularity, possible_room_index, professors, class_id)
-        if t == None:
-            # Corner cases: when a specific room has very small capacity, so that the current class c cannot fit in any time of this room, and other rooms are all filled also.
-            for ava_r in range(len(ava_rooms)):
-                if ava_rooms[ava_r] > 0:
-                    index = ava_r
-            for row in range (len(schedule)):
-                if schedule[row][index] == 0:
-                    t = row
-                    break
-        if not t== None:
-            ava_rooms[index] -= 1
-            schedule[t][index] = class_id
-            room_id = room_index_dict[index][0]
-            room_dict[class_id] = (t+1,room_id)
-            Position[class_id] = (t,index)
-            i += 1
-        else:
-            return schedule, i
-    return schedule, i
-
-# classes is a list of clsses from count_class_size(), so it should be sorted by popularity already
-# rooms should also be sorted list in increasing order of capacity (room_id, cap)
-# overlapping_slots is a dictrionary of overlapping time slots. e.g. {'T,H': [[(1:00PM, 4:00PM), (2:30PM, 4:00PM),(12:00PM, 1:30PM)]]}
-# times is a dictrionary of non-overlapping time slots
-def scheduling(classes, students, professors, times, rooms, hc_classes, overlapping_slots, class_department, department_build, room_index_dict):
-    # schedule for non-overlapping time slots
-    Schedule = [[0 for y in rooms] for x in times]
-    overlapping_schedule = init_overlapping_schedule(overlapping_slots, rooms) # TODO: variable name
-    # Position is a dict keyed with class id
-    Position = {}
-    # room_dict is a dictrionary keyed with class id and (time slot,room id) in the schedule as value
-    room_dict = {}
-    # available rooms in the Schedule, the content of which is the number of slots that is available for the room
-    ava_rooms = [len(times)]*len(rooms)
-    i = 0
-    Schedule, i = fill_schedule(Schedule,room_dict, Position, classes, i, students, professors, times, room_index_dict, hc_classes, ava_rooms, class_department, department_build)
-    over_Position = {}
-    if i < len(classes):
-        # there are classes still not scheduled
-        # move on to overlapping_schedule
-        ava_rooms = [len(overlapping_schedule)]*len(rooms)
-        overlapping_schedule, i = fill_schedule(overlapping_schedule,room_dict, over_Position, classes, i, students, professors, times, room_index_dict, hc_classes, ava_rooms, class_department, department_build)
-        pass
-    # print("----------non_overlapping Schedule-----------")
-    # print (Schedule)
-    # print("------------overlapping schedule-----------")
-    # print(overlapping_schedule)
-    # print("-----------Position-----------")
-    # print(Position)
-    # print('-----------Room dict--------')
-    # print(room_dict)
-    return Schedule+overlapping_schedule, Position, room_dict, over_Position
 
 def simulatedAnnealing(initialSchedule, initialPosition, iterationMax, initial_temp, evaluation):
+    # print (evaluation.room_index_dict)
     getcontext().prec = 6
     getcontext().traps[Overflow] = 0
     temp_change_rate = Decimal(0.09)
@@ -140,30 +66,32 @@ def simulatedAnnealing(initialSchedule, initialPosition, iterationMax, initial_t
     bestSchedule = curSchedule
     curbestSatis = satisCalc(evaluation)
     curSatis = curbestSatis
-    cur_temp = Decimal(initial_temp) # set as temp value, needs more research. TODO.
+    cur_temp = Decimal(initial_temp) # set as temp value, needs more expemeriments. TODO.
     T_min = Decimal(0.01)
-    while cur_temp > T_min:
-        for i in range (iterationMax):
-            neighborSchedule, neighborPosition = createNeighborSchedule_greedy(evaluation, i%len(evaluation.classes))
-            # neighborSchedule, neighborPosition = createNeighborSchedule(evaluation)
-            evaluation.setSchedule(neighborSchedule, neighborPosition)
-            neighborSatis = satisCalc(evaluation)
-            # cur_temp = Decimal(cur_temp*(1-temp_change_rate)) #only apply this when use createNeighborSchedule_greedy
-            if curSatis < neighborSatis:
-                curSchedule = neighborSchedule
-                curSatis = neighborSatis
-                if neighborSatis > curbestSatis:
-                    bestSchedule = neighborSchedule
-                    curbestSatis = neighborSatis
-                # print("accept")
-            elif Decimal(e)**(Decimal((curSatis - neighborSatis)/Decimal(cur_temp))) > random.uniform(12.8,13) and Decimal(e)**(Decimal((curSatis - neighborSatis)/Decimal(cur_temp))) < random.uniform(14,14.2):
-                # TODO random() function
-                # print("!!! {} {} {}".format((curSatis - neighborSatis), (cur_temp), (Decimal(e)**(Decimal((curSatis - neighborSatis)/Decimal(cur_temp))))))
-                curSchedule = neighborSchedule
-                curbestSatis = neighborSatis
-                print("jump out {} {}".format(Decimal(e)**(Decimal((curSatis - neighborSatis)/Decimal(cur_temp))), (curbestSatis)))
+    # while cur_temp > T_min:
+    for i in range (iterationMax):
+        # hybrid SA
+        neighborSchedule, neighborPosition = createNeighborSchedule_greedy(evaluation, i%len(evaluation.classes))
+        # neighborSchedule, neighborPosition = createNeighborSchedule(evaluation)
+        evaluation.setSchedule(neighborSchedule, neighborPosition)
+        neighborSatis = satisCalc(evaluation)
         cur_temp = Decimal(cur_temp*(1-temp_change_rate)) #only apply this when use createNeighborSchedule_greedy
-        print(curbestSatis, cur_temp, Decimal(e)**(Decimal((curSatis - neighborSatis)/Decimal(cur_temp))))
+        if curSatis < neighborSatis:
+            curSchedule = neighborSchedule
+            curSatis = neighborSatis
+            if neighborSatis > curbestSatis:
+                bestSchedule = neighborSchedule
+                curbestSatis = neighborSatis
+            # print("accept, curbest : {} at iteration i={}".format(curbestSatis, i))
+            # print(bestSchedule)
+        elif Decimal(e)**(Decimal((curSatis - neighborSatis)/Decimal(cur_temp))) > random.uniform(12.8,13) and Decimal(e)**(Decimal((curSatis - neighborSatis)/Decimal(cur_temp))) < 0: #random.uniform(14,14.2):
+            # TODO random() function
+            # print("!!! {} {} {}".format((curSatis - neighborSatis), (cur_temp), (Decimal(e)**(Decimal((curSatis - neighborSatis)/Decimal(cur_temp))))))
+            curSchedule = neighborSchedule
+            curbestSatis = neighborSatis
+            print("jump out {} {}".format(Decimal(e)**(Decimal((curSatis - neighborSatis)/Decimal(cur_temp))), (curbestSatis)))
+    # cur_temp = Decimal(cur_temp*(1-temp_change_rate)) #only apply this when use createNeighborSchedule_greedy
+    # print(curbestSatis)#, cur_temp, Decimal(e)**(Decimal((curSatis - neighborSatis)/Decimal(cur_temp))))
     return bestSchedule, curbestSatis
 
 def createNeighborSchedule(evaluation):
@@ -200,46 +128,24 @@ def createNeighborSchedule_greedy(evaluation, i):
     target_class_cap = target_class[1]
     old_time = evaluation.position[target_class_id][0]
     old_room = evaluation.position[target_class_id][1]
-    room_index, t, capacity = find_valid_room(NeighborSchedule, target_class_cap, evaluation.room_index_dict, evaluation.professors, target_class_id)
+    # room_index, t, capacity = find_valid_room(NeighborSchedule, target_class_cap, evaluation.room_index_dict, evaluation.professors, target_class_id)
+    room_index, t, capacity = find_valid_room_SA(NeighborSchedule, target_class_cap, evaluation.room_index_dict, evaluation.professors, target_class_id)
     if not t== None:
+        # print("{} find room or time slots, cap = {}".format(target_class_id, target_class_cap))
         NeighborSchedule[old_time][old_room] = 0
+        # print("originally at:")
+        # print(old_time, old_room)
+        # print('switched to:')
+        # print(t, room_index)
         NeighborSchedule[t][room_index] = target_class_id
         NeighborPosition[target_class_id] = (t,room_index)
+        # print(NeighborSchedule)
+    # else:
+    #     print("{} not found room or time slots, cap = {}".format(target_class_id, target_class_cap))
     return NeighborSchedule, NeighborPosition
 
-def satisCalc(evaluation):
-    """A function that returns the satisfaction rate of the curent schedule associated with evaluation."""
-    return evaluation.get_eval()
-
-def find_valid_reverse_room(Schedule, threshold, room_index_dict, professors, class_id):
-    room_id = 0
-    t = None
-    capacity = 0
-    # total_rooms = len(rooms)
-    index = 0
-    for index, room in room_index_dict.items():
-        room_id = room[0]
-        capacity = room[1]
-        t = empty_timeslot_reverse(Schedule, room_id, professors, class_id, index)
-        if not t == None:
-            break
-    return index, t, capacity
-
-def empty_timeslot_reverse(Schedule, room_id, professors, class_id, index):
-    for row in range (len( Schedule)):
-        professor_conflict = False
-        if Schedule[row][index] == 0:
-            for i in range (0, index):
-                c_id = Schedule[row][i]
-                if c_id > 0:
-                    if professors[c_id] == professors[class_id]:
-                        professor_conflict = True
-                        break
-            if professor_conflict == False:
-                return row
-    return None
-
-def find_valid_room(Schedule, threshold, room_index_dict, professors, class_id):
+def find_valid_room_SA(Schedule, threshold, room_index_dict, professors, class_id):
+    """A function that finds a valid room (without professor conflict) that is large enough to hold the class, without sacrificing any students."""
     room_id = 0
     t = None
     capacity = 0
@@ -251,12 +157,19 @@ def find_valid_room(Schedule, threshold, room_index_dict, professors, class_id):
         if cap >= threshold:
             room_id = rid
             capacity = cap
-            t = empty_timeslot(Schedule, room_id, professors, class_id, index)
+            t = empty_timeslot_SA(Schedule, room_id, professors, class_id, index, room_index_dict)
             if not t == None:
                 break
     return index, t, capacity
 
-def empty_timeslot(Schedule, room_id, professors, class_id, index):
+def empty_timeslot_SA(Schedule, room_id, professors, class_id, index, room_index_dict):
+    """Different from greedy: Find any room that is large enough, instead of finding one that is as small as possible to hold the popularity"""
+    # index = random.randint(index, len(room_index_dict)-1) #rarely getting satisfaction rate higher than 80% with 5000 iteration
+    # if index < len(room_index_dict)-1:
+    #     index += 1    #around 77.5% wiht 5000 iteration
+    if index < len(room_index_dict)-20:
+        index += 20    #around 81.2% wiht 5000 iteration
+    # 83.67% without manipulating index at all
     for row in range (len( Schedule)):
         professor_conflict = False
         if Schedule[row][index] == 0:
@@ -269,6 +182,10 @@ def empty_timeslot(Schedule, room_id, professors, class_id, index):
             if professor_conflict == False:
                 return row
     return None
+
+def satisCalc(evaluation):
+    """A function that returns the satisfaction rate of the curent schedule associated with evaluation."""
+    return evaluation.get_eval()
 
 def sort_room_cap(Class_list):
     Class_list.sort(key = lambda x: x[1])
@@ -316,8 +233,8 @@ time_group, time_no_dup = get_dup_time_slot_dict(times)
 # time_group is overlapping time slots
 times = haverford_reconstruct_time_slots(times)
 time_no_dup = haverford_reconstruct_time_slots(time_no_dup)
-
-pref_dict = parser.haverford_parse_pref(sys.argv[2])
+# print(time_no_dup)
+pref_dict = parser.haverford_parse_pref(sys.argv[2], hc_classes)
 students = pref_dict.keys()
 classes = parser.count_class_size(pref_dict)
 rooms = sort_room_cap(rooms)
@@ -336,11 +253,12 @@ eval = estimation(students, pref_dict, schedule, position, sanitized, rooms, pro
 print("satisfaction of greedy: {}".format(eval.get_eval()))
 print("runtime: {}".format(end-start))
 
+print(room_index_dict)
 # start of simulated annealing
-iterationMax = len(eval.classes)
+iterationMax = 5000#len(eval.classes) 
 initial_temp = Decimal(1)
 bestsche, best_result = simulatedAnnealing(eval.schedule, eval.position, iterationMax, initial_temp, eval)
 print(best_result)
 # print(bestsche)
-# eval.displaySchedule()
+eval.displaySchedule(time_no_dup)
 write_schedule_to_file(student_in_class, professors, room_dict, schedule, sys.argv[4])

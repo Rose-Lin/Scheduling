@@ -60,7 +60,7 @@ class parser:
             time_slots[time_slots_keys] = [(start_time, end_time)]
         return time_slots
 
-    def haverford_parse_pref(self, file):
+    def haverford_parse_pref(self, file, hc_classes):
         """" A function used on haverford data, returns professors students pref dict"""
         pref_dict = {}
         with open(file) as f:
@@ -71,8 +71,19 @@ class parser:
                 student_id = int(lines[i].split('\t')[0])
                 pref_list_line = lines[i].split('\t')[1]
                 pref_dict[student_id] = [int(x) for x in pref_list_line.split()]
+        pref_dict = self.sanitize_pref(pref_dict, hc_classes)
         return pref_dict
     
+    def sanitize_pref(self, pref_dict, hc_classes):
+        """A function that eliminates all Bryn Mawr classes from students' preference dicts."""
+        for student_id, pref_list in pref_dict.items():
+            sanitized_pref = []
+            for class_id in pref_list:
+                if class_id in hc_classes:
+                    sanitized_pref.append(class_id)
+            pref_dict[student_id] = sanitized_pref
+        return pref_dict
+
     def count_class_size(self, pref_dict):
         sizes = {}
         for x in pref_dict:
