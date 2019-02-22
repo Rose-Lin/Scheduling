@@ -1,5 +1,8 @@
+import tabulate
+import decimal
+
 class estimation:
-    def __init__(self, s, Pref, Schedule, Position, classes, rooms, professors):
+    def __init__(self, s, Pref, Schedule, Position, classes, rooms, professors, room_index_dict):
         self.s = s
         self.pref = Pref
         self.schedule = Schedule
@@ -7,6 +10,13 @@ class estimation:
         self.classes = classes
         self.rooms = rooms
         self.professors = professors
+        self.room_index_dict = room_index_dict
+        # print(room_index_dict)
+        # print("professors:")
+        # print(professors)
+        # print("position")
+        # print(Position)
+        # print(classes)
         
     def setSchedule(self,newSchedule, newPosition):
         self.schedule = newSchedule
@@ -36,7 +46,29 @@ class estimation:
                         pop = pair[1]
             if pop > room_cap:
                 count -= (pop-room_cap)
-        return (float(count)/total)
+        # print(total) #-->3334
+        # return (decimal.Decimal(count)/total)
+        # return (float(count)/total)
+        return count, total
 
     def get_eval(self):
-        return self.test_result(self.s, self.pref, self.schedule, self.position, self.classes, self.rooms)
+        # TODO: need to update based on self.test_result
+        return self.test_result(self.s, self.pref, self.schedule, self.position, self.classes, self.rooms)[0]
+
+    def displaySchedule(self, time_no_dup):
+        header = ["course_id", "professors", "time","room", "popularity"]
+        table = []
+        for row_num in range (len(self.schedule)):
+            for col_num in range (len(self.schedule[0])):
+                if self.schedule[row_num][col_num] != 0:
+                    course_id = self.schedule[row_num][col_num]
+                    time = time_no_dup[row_num]
+                    room = self.room_index_dict[col_num]
+                    prof = self.professors[course_id]
+                    popularity = -1
+                    for pair in self.classes:
+                        if pair[0] == course_id:
+                            popularity = pair[1]
+                    row = [course_id, prof, time, room, popularity]
+                    table.append(row)
+        print(tabulate.tabulate(table, header,  tablefmt="github"))

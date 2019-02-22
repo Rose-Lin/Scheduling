@@ -61,38 +61,42 @@ def simulatedAnnealing(initialSchedule, initialPosition, iterationMax, initial_t
     # print (evaluation.room_index_dict)
     getcontext().prec = 6
     getcontext().traps[Overflow] = 0
-    temp_change_rate = Decimal(0.09)
+    temp_change_rate = Decimal(0.002)
     curSchedule = initialSchedule
     bestSchedule = curSchedule
     curbestSatis = satisCalc(evaluation)
     curSatis = curbestSatis
     cur_temp = Decimal(initial_temp) # set as temp value, needs more expemeriments. TODO.
-    T_min = Decimal(0.01)
+    T_min = Decimal(0.1)
     # while cur_temp > T_min:
     for i in range (iterationMax):
         # hybrid SA
-        # neighborSchedule, neighborPosition = createNeighborSchedule_greedy(evaluation, i%len(evaluation.classes))
-        neighborSchedule, neighborPosition = createNeighborSchedule(evaluation)
-        evaluation.setSchedule(neighborSchedule, neighborPosition)
-        neighborSatis = satisCalc(evaluation)
-        cur_temp = Decimal(cur_temp*(1-temp_change_rate)) #only apply this when use createNeighborSchedule_greedy
-        if curSatis < neighborSatis:
-            curSchedule = neighborSchedule
-            curSatis = neighborSatis
-            if neighborSatis > curbestSatis:
-                bestSchedule = neighborSchedule
+        if cur_temp > T_min:
+            neighborSchedule, neighborPosition = createNeighborSchedule_greedy(evaluation, i%len(evaluation.classes))
+            # neighborSchedule, neighborPosition = createNeighborSchedule(evaluation)
+            evaluation.setSchedule(neighborSchedule, neighborPosition)
+            neighborSatis = satisCalc(evaluation)
+            cur_temp = Decimal(cur_temp*(1-temp_change_rate)) #only apply this when use createNeighborSchedule_greedy
+            if curSatis < neighborSatis:
+                curSchedule = neighborSchedule
+                curSatis = neighborSatis
+                if neighborSatis > curbestSatis:
+                    bestSchedule = neighborSchedule
+                    curbestSatis = neighborSatis
+                # print("accept, curbest : {} at iteration i={}".format(curbestSatis/3878, i))
+                # print(bestSchedule)
+            elif Decimal(e)**(Decimal((curSatis - neighborSatis)/Decimal(cur_temp))) < random.uniform(1.7,1.75) and Decimal(e)**(Decimal((curSatis - neighborSatis)/Decimal(cur_temp))) > random.uniform(1.65,1.7): 
+                # print("!!! {} {} {}".format((curSatis - neighborSatis), (cur_temp), (Decimal(e)**(Decimal((curSatis - neighborSatis)/Decimal(cur_temp))))))
+                curSchedule = neighborSchedule
                 curbestSatis = neighborSatis
-            # print("accept, curbest : {} at iteration i={}".format(curbestSatis, i))
-            # print(bestSchedule)
-        elif Decimal(e)**(Decimal((curSatis - neighborSatis)/Decimal(cur_temp))) > random.uniform(12.8,13) and Decimal(e)**(Decimal((curSatis - neighborSatis)/Decimal(cur_temp))) < 0: #random.uniform(14,14.2):
-            # TODO random() function
-            # print("!!! {} {} {}".format((curSatis - neighborSatis), (cur_temp), (Decimal(e)**(Decimal((curSatis - neighborSatis)/Decimal(cur_temp))))))
-            curSchedule = neighborSchedule
-            curbestSatis = neighborSatis
-            print("jump out {} {}".format(Decimal(e)**(Decimal((curSatis - neighborSatis)/Decimal(cur_temp))), (curbestSatis)))
-    # cur_temp = Decimal(cur_temp*(1-temp_change_rate)) #only apply this when use createNeighborSchedule_greedy
-    # print(curbestSatis)#, cur_temp, Decimal(e)**(Decimal((curSatis - neighborSatis)/Decimal(cur_temp))))
-    return bestSchedule, curbestSatis
+                # print("jump out curstatis: {}  neighborsatis:{}, curbest: {}".format(curSatis ,neighborSatis, curbestSatis))
+            # cur_temp = Decimal(cur_temp*(1-temp_change_rate)) #only apply this when use createNeighborSchedule_greedy
+            # print(curbestSatis, 
+            # cur_temp, 
+            # curSatis - neighborSatis, Decimal(e)**(Decimal((curSatis - neighborSatis)/Decimal(cur_temp))))
+        # else:
+        #     cur_temp = initial_temp
+    return bestSchedule, curbestSatis/3334
 
 def createNeighborSchedule(evaluation):
     """ A function that creates a neighboring solution to the problem, by moving a random course to a random empty time slot.
@@ -131,17 +135,9 @@ def createNeighborSchedule_greedy(evaluation, i):
     # room_index, t, capacity = find_valid_room(NeighborSchedule, target_class_cap, evaluation.room_index_dict, evaluation.professors, target_class_id)
     room_index, t, capacity = find_valid_room_SA(NeighborSchedule, target_class_cap, evaluation.room_index_dict, evaluation.professors, target_class_id)
     if not t== None:
-        # print("{} find room or time slots, cap = {}".format(target_class_id, target_class_cap))
         NeighborSchedule[old_time][old_room] = 0
-        # print("originally at:")
-        # print(old_time, old_room)
-        # print('switched to:')
-        # print(t, room_index)
         NeighborSchedule[t][room_index] = target_class_id
         NeighborPosition[target_class_id] = (t,room_index)
-        # print(NeighborSchedule)
-    # else:
-    #     print("{} not found room or time slots, cap = {}".format(target_class_id, target_class_cap))
     return NeighborSchedule, NeighborPosition
 
 def find_valid_room_SA(Schedule, threshold, room_index_dict, professors, class_id):
@@ -149,7 +145,6 @@ def find_valid_room_SA(Schedule, threshold, room_index_dict, professors, class_i
     room_id = 0
     t = None
     capacity = 0
-    # total_rooms = len(rooms)
     index = 0
     for index, room in room_index_dict.items():
         rid = room[0]
@@ -157,13 +152,13 @@ def find_valid_room_SA(Schedule, threshold, room_index_dict, professors, class_i
         if cap >= threshold:
             room_id = rid
             capacity = cap
-            index = random.randint(index, len(room_index_dict)-1) #83.4% with 5000 iteration
+            index = random.randint(index, len(room_index_dict)-1) #88.4% with 5000 iteration 
             # if index < len(room_index_dict)-1:
             #     index += 1    #around 82.4% wiht 5000 iteration
             # if index < len(room_index_dict)-20:
-            #     index += 20    #around 84.5% wiht 5000 iteration
-            # 83.67% without further manipulating index at all with 5000 iteration
-            # 82.23% complete randomness with 5000 iteration
+            #     index += 20    #around 86% wiht 5000 iteration
+            # 85.67% without further manipulating index at all with 5000 iteration
+            # 82% complete randomness with 5000 iteration
             t = empty_timeslot_SA(Schedule, room_id, professors, class_id, index, room_index_dict)
             if not t == None:
                 break
@@ -222,8 +217,8 @@ def get_students_in_class(pref_dict, room_dict):
                         students[c] = [s]
     return students
 
-if len(sys.argv) != 5:
-    print("Usage: " + 'python3' + " <constraints.txt> <student_prefs.txt> <schedule_greedy.txt> <schedule_SA.txt")
+if len(sys.argv) != 4:
+    print("Usage: " + 'python3' + " <constraints.txt> <student_prefs.txt> <schedule_greedy.txt> <schedule_SA.txt>")
     exit(1)
 start = time.time()
 
@@ -234,7 +229,6 @@ time_group, time_no_dup = get_dup_time_slot_dict(times)
 # time_group is overlapping time slots
 times = haverford_reconstruct_time_slots(times)
 time_no_dup = haverford_reconstruct_time_slots(time_no_dup)
-# print(time_no_dup)
 pref_dict = parser.haverford_parse_pref(sys.argv[2], hc_classes)
 students = pref_dict.keys()
 classes = parser.count_class_size(pref_dict)
@@ -247,19 +241,17 @@ for room in rooms:
 schedule, position, room_dict, over_Position = scheduling(classes, students, professors, time_no_dup, rooms, hc_classes, time_group,class_major,depart_build, room_index_dict)
 end = time.time()
 student_in_class = get_students_in_class(pref_dict, room_dict)
-write_schedule_to_file(student_in_class, professors, room_dict, schedule, sys.argv[3])
+# write_schedule_to_file(student_in_class, professors, room_dict, schedule, sys.argv[3])
 
 sanitized = parser.sanitize_classes(hc_classes, classes)
 eval = estimation(students, pref_dict, schedule, position, sanitized, rooms, professors, room_index_dict)
-print("satisfaction of greedy: {}".format(eval.get_eval()))
-print("runtime: {}".format(end-start))
+# print("satisfaction of greedy: {}".format(eval.get_eval()/3334))
+# print("runtime: {}".format(end-start))
 
-print(room_index_dict)
 # start of simulated annealing
 iterationMax = 5000#len(eval.classes) 
-initial_temp = Decimal(1)
+initial_temp = Decimal(100000)
 bestsche, best_result = simulatedAnnealing(eval.schedule, eval.position, iterationMax, initial_temp, eval)
-print(best_result)
-# print(bestsche)
 eval.displaySchedule(time_no_dup)
-write_schedule_to_file(student_in_class, professors, room_dict, schedule, sys.argv[4])
+print("This schedule is satisfying {}% of student preference".format(Decimal(best_result)*100) )
+write_schedule_to_file(student_in_class, professors, room_dict, schedule, sys.argv[3])
