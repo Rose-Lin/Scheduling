@@ -1,6 +1,6 @@
 # Scheduling
 
-### Description of the project
+### Project Description
 
 The goal of the project is to use a hybrid algorithm to solve the University Scheduling Problem. 
 
@@ -24,4 +24,4 @@ Go to directory `./data/haverford/`
 
 If you do not have files named "haverfordConstrainsts_major.txt", run  `python3 .\get_haverford_info.py .\haverfordEnrollmentDataS14.csv .\haverfordStudentPrefs.txt .\haverfordConstraints_major.txt`
  
-Then type in command `python3 .\scheduling.py .\haverfordConstraints_major.txt .\haverfordStudentPrefs.txt .\output.txt`. `output.txt` is the file that stores the schedule generated with more detailed information on students attending each class. A more consice schedule is also printed in the shell, with a satifaction on the last line.
+Then type in command `python3 .\scheduling.py .\haverfordConstraints_major.txt .\haverfordStudentPrefs.txt .\output.txt`. (`output.txt` is the file that stores the schedule generated with more detailed information on students attending each class. A more consice schedule is also printed in the shell, with a satifaction on the last line.)
