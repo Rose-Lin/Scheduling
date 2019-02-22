@@ -1,8 +1,9 @@
 # Scheduling
 
-###Description of the project
+### Description of the project
 
 The goal of the project is to use a hybrid algorithm to solve the University Scheduling Problem. 
+
 Some hard constraints have to be satisfied:
 1. No professor can teach two cources at the same time.
 2. No students can attend two cources at the same time.
@@ -14,11 +15,11 @@ Some soft constraints should be satisfied as much as possible:
 
 The project implements a greedy algorithm to assign a basic schedule as an initial input for simulated annealing. Simulated annealing can generate a schedule that satisfies around 88% of the students' preferences.
 
-###Requirements
+### Requirements
 * Make sure you have python 3.0 or later version installed.
 * Also make sure you have tabulate module installed. If not, run command `pip install tabulate`
 
-###How to execute the project
+### How to execute the project
 Go to directory `./data/haverford/`
 
 If you do not have files named "haverfordConstrainsts_major.txt", run  `python3 .\get_haverford_info.py .\haverfordEnrollmentDataS14.csv .\haverfordStudentPrefs.txt .\haverfordConstraints_major.txt`
