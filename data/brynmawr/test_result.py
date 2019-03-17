@@ -46,14 +46,13 @@ class estimation:
                         pop = pair[1]
             if pop > room_cap:
                 count -= (pop-room_cap)
-        # print(total) #-->3334
         # return (decimal.Decimal(count)/total)
         # return (float(count)/total)
         return count, total
 
     def get_eval(self):
-        # TODO: need to update based on self.test_result
-        return self.test_result(self.s, self.pref, self.schedule, self.position, self.classes, self.rooms)[0]
+        result = self.test_result(self.s, self.pref, self.schedule, self.position, self.classes, self.rooms)
+        return result
 
     def displaySchedule(self, time_no_dup):
         header = ["course_id", "professors", "time","room", "popularity"]
