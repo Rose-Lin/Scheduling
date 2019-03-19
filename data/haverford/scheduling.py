@@ -72,8 +72,8 @@ def simulatedAnnealing(initialSchedule, initialPosition, iterationMax, initial_t
     for i in range (iterationMax):
         # hybrid SA
         if cur_temp > T_min:
-            # neighborSchedule, neighborPosition = createNeighborSchedule_greedy(evaluation, i%len(evaluation.classes))
-            neighborSchedule, neighborPosition = createNeighborSchedule(evaluation)
+            neighborSchedule, neighborPosition = createNeighborSchedule_greedy(evaluation, i%len(evaluation.classes))
+            # neighborSchedule, neighborPosition = createNeighborSchedule(evaluation)
             evaluation.setSchedule(neighborSchedule, neighborPosition)
             neighborSatis = satisCalc(evaluation)
             cur_temp = Decimal(cur_temp*(1-temp_change_rate)) #only apply this when use createNeighborSchedule_greedy
@@ -132,7 +132,6 @@ def createNeighborSchedule_greedy(evaluation, i):
     target_class_cap = target_class[1]
     old_time = evaluation.position[target_class_id][0]
     old_room = evaluation.position[target_class_id][1]
-    # room_index, t, capacity = find_valid_room(NeighborSchedule, target_class_cap, evaluation.room_index_dict, evaluation.professors, target_class_id)
     room_index, t, capacity = find_valid_room_SA(NeighborSchedule, target_class_cap, evaluation.room_index_dict, evaluation.professors, target_class_id)
     if not t== None:
         NeighborSchedule[old_time][old_room] = 0
@@ -218,10 +217,10 @@ def get_students_in_class(pref_dict, room_dict):
     return students
 
 if len(sys.argv) != 5:
-    print("Usage: " + 'python3' + " <constraints.txt> <student_prefs.txt> <schedule_output.txt> <#iteration>")
+    print("Usage: " + 'python3 scheduling.py' + " <constraints.txt> <student_prefs.txt> <schedule_output.txt> <#iteration>")
     exit(1)
 start = time.time()
-print("---------------------------------{} iteration-----------------".format(sys.argv[4]))
+# print("---------------------------------{} iteration-----------------".format(sys.argv[4]))
 parser = parser()
 professors, rooms, times, hc_classes, class_major, depart_build = parser.haverford_parse_prof_rooms_times_class(sys.argv[1])
 time_group, time_no_dup = get_dup_time_slot_dict(times)
@@ -244,7 +243,7 @@ student_in_class = get_students_in_class(pref_dict, room_dict)
 
 sanitized = parser.sanitize_classes(hc_classes, classes)
 eval = estimation(students, pref_dict, schedule, position, sanitized, rooms, professors, room_index_dict)
-print("satisfaction of greedy: {}".format(eval.get_eval()/3334))
+# print("satisfaction of greedy: {}".format(eval.get_eval()/3334))
 # print("runtime: {}".format(end-start))
 
 # start of simulated annealing
@@ -252,7 +251,8 @@ iterationMax = int(sys.argv[4] )
 initial_temp = Decimal(100000)
 bestsche, best_result = simulatedAnnealing(eval.schedule, eval.position, iterationMax, initial_temp, eval)
 end = time.time()
-print("runtime: {}".format(end-start))
+print("iteration: {} \t runtime: {} \t SAT: {}".format(sys.argv[4],end-start, Decimal(best_result)*100 ))
+
 # eval.displaySchedule(time_no_dup)
-print("This schedule is satisfying {}% of student preference".format(Decimal(best_result)*100) )
+# print("This schedule is satisfying {}% of student preference".format(Decimal(best_result)*100) )
 write_schedule_to_file(student_in_class, professors, room_dict, schedule, sys.argv[3])

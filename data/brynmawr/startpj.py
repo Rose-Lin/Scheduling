@@ -23,6 +23,7 @@ try:
     os.mkdir("prettyschedule")
 except(FileExistsError):
     shutil.rmtree("prettyschedule")
+    os.mkdir("prettyschedule")
     print("dir \'prettyschedule\' removed")
 
 iterations = ["100", "500", "1000", "2000", "3000", "4000", "5000", "6000", "7000"]
@@ -37,9 +38,5 @@ for semesterfile in semesterdata:
     for iter in iterations:
         cmd = "python3 scheduling.py {} {} {} {}".format(constriant_file_name, studentpref_file_name, output_file_name, iter)
         prettyschedule = subprocess.check_output(cmd, shell= True)
-        # print(prettyschedule)
         with open(prettyschedule_name, "ab") as file:
             file.write(prettyschedule)
-        # cmd = "{} &> {} ".format(prettyschedule, prettyschedule_name)
-        # subprocess.call(cmd)
-
