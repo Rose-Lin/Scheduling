@@ -58,7 +58,6 @@ def haverford_reconstruct_time_slots(time_slots):
 
 
 def simulatedAnnealing(initialSchedule, initialPosition, iterationMax, initial_temp, evaluation):
-    # print (evaluation.room_index_dict)
     getcontext().prec = 6
     getcontext().traps[Overflow] = 0
     temp_change_rate = Decimal(0.002)
@@ -223,17 +222,20 @@ start = time.time()
 # print("---------------------------------{} iteration-----------------".format(sys.argv[4]))
 parser = parser()
 professors, rooms, times, hc_classes, class_major, depart_build = parser.haverford_parse_prof_rooms_times_class(sys.argv[1])
-time_group, time_no_dup = get_dup_time_slot_dict(times)
-# time_no_dup is non-overlapping time slots
-# time_group is overlapping time slots
+time_group, time_no_dup = get_dup_time_slot_dict(times) # time_no_dup is non-overlapping time slots
+                                                        # time_group is overlapping time slots
 times = haverford_reconstruct_time_slots(times)
 time_no_dup = haverford_reconstruct_time_slots(time_no_dup)
 pref_dict = parser.haverford_parse_pref(sys.argv[2], hc_classes)
 students = pref_dict.keys()
-classes = parser.count_class_size(pref_dict)
+classes = parser.count_class_size(pref_dict) #classes is sorted by pop
 rooms = sort_room_cap(rooms)
 room_index_dict = {}
 index = 0
+# find the conflict pair
+conflict_pair, maximum = parser.conflict_pair(hc_classes, pref_dict)
+sorted_conflict_pair = parser.sort_conflict_pair(conflict_pair, maximum)
+
 for room in rooms:
     room_index_dict[index] = room
     index += 1
@@ -243,7 +245,7 @@ student_in_class = get_students_in_class(pref_dict, room_dict)
 
 sanitized = parser.sanitize_classes(hc_classes, classes)
 eval = estimation(students, pref_dict, schedule, position, sanitized, rooms, professors, room_index_dict)
-# print("satisfaction of greedy: {}".format(eval.get_eval()/3334))
+print("satisfaction of greedy: {}".format(eval.get_eval()/3334))
 # print("runtime: {}".format(end-start))
 
 # start of simulated annealing

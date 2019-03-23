@@ -75,12 +75,17 @@ class parser:
         return pref_dict
     
     def sanitize_pref(self, pref_dict, hc_classes):
-        """A function that eliminates all Bryn Mawr classes from students' preference dicts."""
+        """A function that eliminates all Bryn Mawr classes from students' preference dicts, and removes duplicate classes from the pref list."""
         for student_id, pref_list in pref_dict.items():
             sanitized_pref = []
+            d ={}
             for class_id in pref_list:
+                d[class_id] = False
+            for class_id in pref_list:
+                d[class_id] = not d[class_id]
                 if class_id in hc_classes:
-                    sanitized_pref.append(class_id)
+                    if d[class_id]:
+                        sanitized_pref.append(class_id)
             pref_dict[student_id] = sanitized_pref
         return pref_dict
 
@@ -107,3 +112,40 @@ class parser:
             if pair[0] in hc_classes:
                 sanitized.append(pair)
         return sanitized
+    
+    def conflict_pair(self, hc_classes, pref_dict):
+        """conflict_pair = {class1: {class2: conflict_num}, class2: {class1: conflict_num}}"""
+        conflict_pair = {}
+        maximum = 0
+        # hc_classes = [111, 108, 359,714,1]
+        # pref_dict ={1: [111, 108, 359, 714], 2:[1]}
+        for i in range (len(hc_classes)):
+            rest_classes = hc_classes[:i] + hc_classes[i+1:]
+            rest_dict = {}
+            for j in rest_classes:
+                rest_dict[j] = 0
+            conflict_pair[hc_classes[i]] = rest_dict
+        for student, pref_list in pref_dict.items():
+            if len(pref_dict) <= 1:
+                pass
+            for i in range (len(pref_list)-1):
+                for j in range (i+1, len(pref_list)):
+                    conflict_pair[pref_list[i]][pref_list[j]] += 1
+                    conflict_pair[pref_list[j]][pref_list[i]] += 1
+                    if maximum < conflict_pair[pref_list[i]][pref_list[j]]:
+                        maximum = conflict_pair[pref_list[i]][pref_list[j]]
+        return conflict_pair, maximum
+    
+    def sort_conflict_pair(self,conflict_pair, maximum):
+        """sorted_conflict_pair = {conflict_num : (class1, class2)}
+        (class1, class2) and (class2, class1) <-- only one of them appears in the dictionary
+        """
+        sorted_conflict_pair = {}
+        for  class1, dic in conflict_pair.items():
+            for class2, conflict_num in dic.items():
+                if conflict_num in sorted_conflict_pair:
+                    if( not (class1, class2) in sorted_conflict_pair[conflict_num] )and not (not (class2, class1) in sorted_conflict_pair[conflict_num] ):
+                        sorted_conflict_pair[conflict_num].append((class1, class2))
+                else:    
+                    sorted_conflict_pair[conflict_num] = [(class1, class2)]
+        return sorted_conflict_pair
