@@ -12,6 +12,8 @@ def fill_schedule(schedule, room_dict, Position,classes, i, students, professors
                 possible_room_index[index] = room
         popularity = classes[i][1]
         # index, t, cap = find_valid_reverse_room(schedule, popularity, possible_room_index, professors, class_id)
+        # `find_valid_reverse_room` is not used because it will lower the optimality.
+        # Reason: used up all time slots for largest rooms will cause some class to be assigned to rooms not large enough
         index, t, cap = find_valid_room(schedule, popularity, possible_room_index, professors, class_id)
         if t == None:
             # Corner cases: when a specific room has very small capacity, so that the current class c cannot fit in any time of this room, and other rooms are all filled also.
