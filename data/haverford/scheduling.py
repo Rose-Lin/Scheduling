@@ -57,46 +57,87 @@ def haverford_reconstruct_time_slots(time_slots):
     return times
 
 
-def simulatedAnnealing(initialSchedule, initialPosition, iterationMax, initial_temp, evaluation):
-    # print (evaluation.room_index_dict)
+def simulatedAnnealing(initialSchedule, initialPosition, iterationMax, initial_temp, evaluation, conflict_pair, maximum):
     getcontext().prec = 6
     getcontext().traps[Overflow] = 0
     temp_change_rate = Decimal(0.002)
     curSchedule = initialSchedule
     bestSchedule = curSchedule
-    curbestSatis = satisCalc(evaluation)
+    result = satisCalc(evaluation)
+    curbestSatis = result[0]
+    total = result[1]
     curSatis = curbestSatis
-    cur_temp = Decimal(initial_temp) # set as temp value, needs more expemeriments. TODO.
-    T_min = Decimal(0.1)
+    # cur_temp = Decimal(initial_temp) # set as temp value, needs more expemeriments. TODO.
+    # T_min = Decimal(0.1)
     # while cur_temp > T_min:
     for i in range (iterationMax):
         # hybrid SA
-        if cur_temp > T_min:
-            neighborSchedule, neighborPosition = createNeighborSchedule_greedy(evaluation, i%len(evaluation.classes))
-            # neighborSchedule, neighborPosition = createNeighborSchedule(evaluation)
-            evaluation.setSchedule(neighborSchedule, neighborPosition)
-            neighborSatis = satisCalc(evaluation)
-            cur_temp = Decimal(cur_temp*(1-temp_change_rate)) #only apply this when use createNeighborSchedule_greedy
-            if curSatis < neighborSatis:
-                curSchedule = neighborSchedule
-                curSatis = neighborSatis
-                if neighborSatis > curbestSatis:
-                    bestSchedule = neighborSchedule
-                    curbestSatis = neighborSatis
-                # print("accept, curbest : {} at iteration i={}".format(curbestSatis/3878, i))
-                # print(bestSchedule)
-            elif Decimal(e)**(Decimal((curSatis - neighborSatis)/Decimal(cur_temp))) < random.uniform(1.7,1.75) and Decimal(e)**(Decimal((curSatis - neighborSatis)/Decimal(cur_temp))) > random.uniform(1.65,1.7): 
-                # print("!!! {} {} {}".format((curSatis - neighborSatis), (cur_temp), (Decimal(e)**(Decimal((curSatis - neighborSatis)/Decimal(cur_temp))))))
-                curSchedule = neighborSchedule
+        # if cur_temp > T_min:
+        neighborSchedule, neighborPosition = createNeighborSchedule_greedy(evaluation, i%len(evaluation.classes))
+        # neighborSchedule, neighborPosition = createNeighborSchedule(evaluation)
+        neighborSchedule, neighborPosition = createNeighborSchedule_conflict_pair(evaluation, conflict_pair, maximum,  i%len(evaluation.classes))
+        evaluation.setSchedule(neighborSchedule, neighborPosition)
+        neighborSatis = satisCalc(evaluation)[0]
+        # cur_temp = Decimal(cur_temp*(1-temp_change_rate)) #only apply this when use createNeighborSchedule_greedy
+        if curSatis < neighborSatis:
+            curSchedule = neighborSchedule
+            curSatis = neighborSatis
+            if neighborSatis > curbestSatis:
+                bestSchedule = neighborSchedule
                 curbestSatis = neighborSatis
-                # print("jump out curstatis: {}  neighborsatis:{}, curbest: {}".format(curSatis ,neighborSatis, curbestSatis))
-            # cur_temp = Decimal(cur_temp*(1-temp_change_rate)) #only apply this when use createNeighborSchedule_greedy
-            # print(curbestSatis, 
-            # cur_temp, 
-            # curSatis - neighborSatis, Decimal(e)**(Decimal((curSatis - neighborSatis)/Decimal(cur_temp))))
+            # print("accept, curbest : {} at iteration i={}".format(curbestSatis/3878, i))
+            # print(bestSchedule)
+        # elif Decimal(e)**(Decimal((curSatis - neighborSatis)/Decimal(cur_temp))) < random.uniform(1.7,1.75) and Decimal(e)**(Decimal((curSatis - neighborSatis)/Decimal(cur_temp))) > random.uniform(1.65,1.7): 
+            # print("!!! {} {} {}".format((curSatis - neighborSatis), (cur_temp), (Decimal(e)**(Decimal((curSatis - neighborSatis)/Decimal(cur_temp))))))
+            # curSchedule = neighborSchedule
+            # curbestSatis = neighborSatis
+            # print("jump out curstatis: {}  neighborsatis:{}, curbest: {}".format(curSatis ,neighborSatis, curbestSatis))
+        # cur_temp = Decimal(cur_temp*(1-temp_change_rate)) #only apply this when use createNeighborSchedule_greedy
+        # print(curbestSatis, 
+        # cur_temp, 
+        # curSatis - neighborSatis, Decimal(e)**(Decimal((curSatis - neighborSatis)/Decimal(cur_temp))))
         # else:
         #     cur_temp = initial_temp
-    return bestSchedule, curbestSatis/3334
+    return bestSchedule, curbestSatis, total
+
+def createNeighborSchedule_conflict_pair(evaluation, conflict_pair, maximum, i):
+    """ This neighborhood structure finds the most conflicted class with class i and reassigns i to other timeslot"""
+    NeighborSchedule = evaluation.schedule.copy() 
+    NeighborPosition = evaluation.position.copy()
+    # Assuming the most popular class will have the most conflict, so conflict_pair does not need to be sorted
+    target_class1 = evaluation.classes[i]
+    target_class1_id = target_class1[0]
+    target_class1_cap = target_class1[1]
+    if not target_class1_id in conflict_pair:
+        return NeighborSchedule, NeighborPosition
+    target_class2_dic = conflict_pair[target_class1_id]
+    largest_conflict_num = 0
+    target_class2_id = target_class1
+    target_class2_cap = -1
+    # Find target_class2_id, which is the most conflict class with class1
+    for class2, conflict_num in target_class2_dic.items():
+        if largest_conflict_num < conflict_num:
+            target_class2_id = class2
+            largest_conflict_num = conflict_num
+    for c, pop in evaluation.classes:
+        if c == target_class2_id:
+            target_class2_cap = pop
+    # Raise error when no target2 is found in evaluation.classes. Hope this will no happen
+    if target_class1_cap == -1:
+        print("conflicted class not found, error!!")
+        return NeighborSchedule, NeighborPosition
+    old_time1 = evaluation.position[target_class1_id][0]
+    old_room1 = evaluation.position[target_class1_id][1]
+    old_time2 = evaluation.position[target_class2_id][0]
+    old_room2 = evaluation.position[target_class2_id][1]
+    # Reassign class1 
+    # Logistic behind: every class is gauranteed to be reassigned at least once, with its most conflicted class
+    room_index, t, capacity = find_valid_room_SA(NeighborSchedule, target_class1_cap, evaluation.room_index_dict, evaluation.professors, target_class1_id)    
+    if not t== None:
+        NeighborSchedule[old_time1][old_room1] = 0
+        NeighborSchedule[t][room_index] = target_class1_id
+        NeighborPosition[target_class1_id] = (t,room_index)
+    return NeighborSchedule, NeighborPosition
 
 def createNeighborSchedule(evaluation):
     """ A function that creates a neighboring solution to the problem, by moving a random course to a random empty time slot.
@@ -151,13 +192,13 @@ def find_valid_room_SA(Schedule, threshold, room_index_dict, professors, class_i
         if cap >= threshold:
             room_id = rid
             capacity = cap
-            index = random.randint(index, len(room_index_dict)-1) #88.4% with 5000 iteration 
+            index = random.randint(index, len(room_index_dict)-1) #88.4% with 5000 iteration (NS3)
             # if index < len(room_index_dict)-1:
             #     index += 1    #around 82.4% wiht 5000 iteration
             # if index < len(room_index_dict)-20:
             #     index += 20    #around 86% wiht 5000 iteration
-            # 85.67% without further manipulating index at all with 5000 iteration
-            # 82% complete randomness with 5000 iteration
+            # 85.67% without further manipulating index at all with 5000 iteration 
+            # 82% complete randomness with 5000 iteration (NS1)
             t = empty_timeslot_SA(Schedule, room_id, professors, class_id, index, room_index_dict)
             if not t == None:
                 break
@@ -220,20 +261,21 @@ if len(sys.argv) != 5:
     print("Usage: " + 'python3 scheduling.py' + " <constraints.txt> <student_prefs.txt> <schedule_output.txt> <#iteration>")
     exit(1)
 start = time.time()
-# print("---------------------------------{} iteration-----------------".format(sys.argv[4]))
 parser = parser()
 professors, rooms, times, hc_classes, class_major, depart_build = parser.haverford_parse_prof_rooms_times_class(sys.argv[1])
-time_group, time_no_dup = get_dup_time_slot_dict(times)
-# time_no_dup is non-overlapping time slots
-# time_group is overlapping time slots
+time_group, time_no_dup = get_dup_time_slot_dict(times) # time_no_dup is non-overlapping time slots
+                                                        # time_group is overlapping time slots
 times = haverford_reconstruct_time_slots(times)
 time_no_dup = haverford_reconstruct_time_slots(time_no_dup)
 pref_dict = parser.haverford_parse_pref(sys.argv[2], hc_classes)
 students = pref_dict.keys()
-classes = parser.count_class_size(pref_dict)
+classes = parser.count_class_size(pref_dict) #classes is sorted by pop
 rooms = sort_room_cap(rooms)
 room_index_dict = {}
 index = 0
+# find the conflict pair
+conflict_pair, maximum = parser.conflict_pair(hc_classes, pref_dict)
+
 for room in rooms:
     room_index_dict[index] = room
     index += 1
@@ -243,15 +285,16 @@ student_in_class = get_students_in_class(pref_dict, room_dict)
 
 sanitized = parser.sanitize_classes(hc_classes, classes)
 eval = estimation(students, pref_dict, schedule, position, sanitized, rooms, professors, room_index_dict)
-# print("satisfaction of greedy: {}".format(eval.get_eval()/3334))
+greedy_result = satisCalc(eval)
+print("satisfaction of greedy: {}".format(greedy_result[0]/greedy_result[1]))
 # print("runtime: {}".format(end-start))
 
 # start of simulated annealing
 iterationMax = int(sys.argv[4] )
 initial_temp = Decimal(100000)
-bestsche, best_result = simulatedAnnealing(eval.schedule, eval.position, iterationMax, initial_temp, eval)
+bestsche, best_result, total = simulatedAnnealing(eval.schedule, eval.position, iterationMax, initial_temp, eval, conflict_pair, maximum)
 end = time.time()
-print("iteration: {} \t runtime: {} \t SAT: {}".format(sys.argv[4],end-start, Decimal(best_result)*100 ))
+print("iteration: {} \t runtime: {} \t SAT: {}".format(sys.argv[4],end-start, Decimal(best_result/total)*100 ))
 
 # eval.displaySchedule(time_no_dup)
 # print("This schedule is satisfying {}% of student preference".format(Decimal(best_result)*100) )

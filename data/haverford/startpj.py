@@ -8,7 +8,7 @@ iterations = ["500", "1000","1500","2000", "2500",  "3000","3500", "4000","4500"
 constriant_file_name = "haverfordConstraints_major.txt"
 studentpref_file_name = "haverfordStudentPrefs.txt" 
 output_file_name = "output.txt"
-prettyschedule_name = "prettyschedule-result2.txt"
+prettyschedule_name = "prettyschedule-result3.txt"
 # cmd = "python3 get_bmc_info.py data/{} {} {}".format(semesterfile, studentpref_file_name, constriant_file_name)
 # subprocess.call(cmd)
 for iter in iterations:
