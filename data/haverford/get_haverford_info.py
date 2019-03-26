@@ -147,7 +147,7 @@ def get_class_times(list_of_dicts):
 #              lab_courses[enrolled_course] = [course]
 #  return lab_courses
 
-def write_building_to_file(list_of_dicts, f):
+def write_building_to_file(list_of_dicts, filename):
     building = get_building(list_of_dicts)
     f = open(filename, 'w')
     f.write("Building\t" + str(len(building)) + "\n")

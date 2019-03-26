@@ -1,5 +1,6 @@
 import tabulate
 import decimal
+from copy import deepcopy
 
 class estimation:
     def __init__(self, s, Pref, Schedule, Position, classes, rooms, professors, room_index_dict):
@@ -19,8 +20,8 @@ class estimation:
         # print(classes)
         
     def setSchedule(self,newSchedule, newPosition):
-        self.schedule = newSchedule
-        self.position = newPosition
+        self.schedule = deepcopy(newSchedule)
+        self.position = deepcopy(newPosition)
 
     def test_result(self, S, Pref, Schedule, Position, classes, rooms):
         """s : students"""
@@ -35,6 +36,9 @@ class estimation:
                     if final_pick[t_index] == 0:
                         final_pick[t_index] = c
                         count += 1
+                    # else:
+                    #     # s is already taking classes at time t_index
+                    #     print("{} cannot take class {} and {} together.".format(s,c, final_pick[t_index]))
                 else:
                     total -= 1
         for c in Position.keys():
@@ -55,10 +59,17 @@ class estimation:
     def displaySchedule(self, time_no_dup):
         header = ["course_id", "professors", "time","room", "popularity"]
         table = []
+        dic = {}
+        for c in self.classes:
+            dic[c[0]] = False
         for row_num in range (len(self.schedule)):
             for col_num in range (len(self.schedule[0])):
                 if self.schedule[row_num][col_num] != 0:
                     course_id = self.schedule[row_num][col_num]
+                    if not dic[course_id]:
+                        dic[course_id] = True
+                    else:
+                        print("duplicates in schedule {}".format(course_id))
                     time = time_no_dup[row_num]
                     room = self.room_index_dict[col_num]
                     prof = self.professors[course_id]
@@ -68,4 +79,7 @@ class estimation:
                             popularity = pair[1]
                     row = [course_id, prof, time, room, popularity]
                     table.append(row)
-        print(tabulate.tabulate(table, header,  tablefmt="github"))
+        for k, v in dic.items():
+            if v == False:
+                print(str(k) + " is not assigned a time slot")
+        # print(tabulate.tabulate(table, header,  tablefmt="github"))
