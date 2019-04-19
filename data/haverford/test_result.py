@@ -12,19 +12,14 @@ class estimation:
         self.rooms = rooms
         self.professors = professors
         self.room_index_dict = room_index_dict
-        # print(room_index_dict)
-        # print("professors:")
-        # print(professors)
-        # print("position")
-        # print(Position)
-        # print(classes)
         
     def setSchedule(self,newSchedule, newPosition):
         self.schedule = deepcopy(newSchedule)
         self.position = deepcopy(newPosition)
 
-    def test_result(self, S, Pref, Schedule, Position, classes, rooms):
+    def test_result(self, S, Pref, Schedule, Position, classes, rooms, course_name, display_failure= False):
         """s : students"""
+        failure_record = {}
         count = 0
         total = 0
         for s in S:
@@ -36,9 +31,16 @@ class estimation:
                     if final_pick[t_index] == 0:
                         final_pick[t_index] = c
                         count += 1
-                    # else:
-                    #     # s is already taking classes at time t_index
-                    #     print("{} cannot take class {} and {} together.".format(s,c, final_pick[t_index]))
+                    else:
+                        # s is already taking classes at time t_index
+                        failure = (course_name[c], course_name[final_pick[t_index]])
+                        failure_reverse = (course_name[final_pick[t_index]], course_name[c])
+                        if failure in failure_record:
+                            failure_record[failure] += 1
+                        elif failure_reverse in failure_record:
+                            failure_record[failure_reverse] += 1
+                        else:
+                            failure_record[failure] = 1
                 else:
                     total -= 1
         for c in Position.keys():
@@ -50,10 +52,12 @@ class estimation:
                         pop = pair[1]
             if pop > room_cap:
                 count -= (pop-room_cap)
+        if display_failure:
+            print(failure_record)
         return count, total
 
-    def get_eval(self):
-        result = self.test_result(self.s, self.pref, self.schedule, self.position, self.classes, self.rooms)
+    def get_eval(self, course_name, display_failure):
+        result = self.test_result(self.s, self.pref, self.schedule, self.position, self.classes, self.rooms, course_name, display_failure)
         return result
 
     def displaySchedule(self, time_no_dup):
@@ -82,4 +86,4 @@ class estimation:
         for k, v in dic.items():
             if v == False:
                 print(str(k) + " is not assigned a time slot")
-        # print(tabulate.tabulate(table, header,  tablefmt="github"))
+        print(tabulate.tabulate(table, header,  tablefmt="github"))

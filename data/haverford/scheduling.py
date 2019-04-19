@@ -3,6 +3,7 @@ import time
 import operator
 import random
 from copy import deepcopy
+from reextract_info import *
 from decimal import *
 from math import e
 from parse import *
@@ -58,33 +59,32 @@ def haverford_reconstruct_time_slots(time_slots):
     return times
 
 
-def simulatedAnnealing(initialSchedule, initialPosition, iterationMax, initial_temp, evaluation, conflict_pair, maximum):
+def simulatedAnnealing(initialSchedule, initialPosition, iterationMax, evaluation, conflict_pair, maximum, course_name, NS_id):
     getcontext().prec = 6
     getcontext().traps[Overflow] = 0
     bestSchedule = deepcopy(initialSchedule)
     bestPosition = deepcopy(initialPosition)
-    result = satisCalc(evaluation)
+    result = satisCalc(evaluation, course_name, False)
     curbestSatis = result[0]
     total = result[1]
     for i in range (iterationMax):
-        neighborSchedule, neighborPosition = createNeighborSchedule(evaluation)
-        # neighborSchedule, neighborPosition = createNeighborSchedule_NS2(evaluation)
-        # neighborSchedule, neighborPosition = createNeighborSchedule_greedy(evaluation, i%len(evaluation.classes))
-        # neighborSchedule, neighborPosition = createNeighborSchedule_conflict_pair(evaluation, conflict_pair, maximum,  i%len(evaluation.classes))
+        if NS_id == "NS1":
+            neighborSchedule, neighborPosition = createNeighborSchedule(evaluation)
+        elif NS_id == "NS2":
+            neighborSchedule, neighborPosition = createNeighborSchedule_NS2(evaluation)
+        elif NS_id == "NS3":
+            neighborSchedule, neighborPosition = createNeighborSchedule_greedy(evaluation, i%len(evaluation.classes))
+        else:
+            neighborSchedule, neighborPosition = createNeighborSchedule_conflict_pair(evaluation, conflict_pair, maximum,  i%len(evaluation.classes))
         evaluation.setSchedule(neighborSchedule, neighborPosition)
-        neighborSatis = satisCalc(evaluation)[0]
+        neighborSatis = satisCalc(evaluation, course_name, False)[0]
         if curbestSatis < neighborSatis:
-            # print("accept")
             bestSchedule = deepcopy(neighborSchedule)
             bestPosition = deepcopy(neighborPosition)
             neighborSchedule[0][-1] = 0
             curbestSatis = neighborSatis
-            # print("check bestSchedule. What is in new pos? {} What is in old pos? {}".format(bestSchedule[new_pos[0]][new_pos[1]], bestSchedule[old_pos[0]][old_pos[1]]))
         else:
-            # print("reject")
-            # print("check bestSchedule. What is in new pos? {} What is in old pos? {}".format(bestSchedule[new_pos[0]][new_pos[1]], bestSchedule[old_pos[0]][old_pos[1]]))
             evaluation.setSchedule(bestSchedule, bestPosition)
-            # print("evaluation should keep the old time slot and room index. What is in new pos? {} What is in old pos? {}".format(evaluation.schedule[new_pos[0]][new_pos[1]], evaluation.schedule[old_pos[0]][old_pos[1]]))
     return bestSchedule, curbestSatis, total
 
 def createNeighborSchedule_conflict_pair(evaluation, conflict_pair, maximum, i):
@@ -158,27 +158,11 @@ def createNeighborSchedule(evaluation):
     ran_class_cap = ran_class_pair[1]
     old_time = evaluation.position[ran_class_id][0]
     old_room = evaluation.position[ran_class_id][1]
-    # print("NS1 checking on {}".format(ran_class_id))
     room_index, t, capacity = find_valid_room(NeighborSchedule, ran_class_cap, evaluation.room_index_dict, evaluation.professors, ran_class_id)
     if not t== None:
         NeighborSchedule[old_time][old_room] = 0
         NeighborSchedule[t][room_index] = ran_class_id
         NeighborPosition[ran_class_id] = (t,room_index)
-        # print("{} reassigned to ({}, {}), old position: ({}, {})".format(ran_class_id, t, room_index, old_time, old_room))
-        # print("old slot in schedule is: {}".format(NeighborSchedule[old_time][old_room]))
-        # d= {}
-        # for c in evaluation.classes:   
-        #     d[c[0]] = False
-        # for row_num in range (len(NeighborSchedule)):
-        #     for col_num in range (len(NeighborSchedule[0])):
-        #         if NeighborSchedule[row_num][col_num] != 0:
-        #             course_id = NeighborSchedule[row_num][col_num]
-        #             if NeighborPosition[course_id] != (row_num, col_num):
-        #                 print(" NeighborPosition and NeighborSchedule not matching {}. Position says: {}. Schedule says: {}".format(course_id,NeighborPosition[course_id], (row_num, col_num)))
-        #             if not d[course_id]:
-        #                 d[course_id] = True
-        #             else:
-        #                 print("duplicates in schedule {}. Reaccurred at : {}".format(course_id, (row_num, col_num)))
     return NeighborSchedule, NeighborPosition
 
 def createNeighborSchedule_greedy(evaluation, i):
@@ -195,13 +179,11 @@ def createNeighborSchedule_greedy(evaluation, i):
     target_class_cap = target_class[1]
     old_time = evaluation.position[target_class_id][0]
     old_room = evaluation.position[target_class_id][1]
-    # print(target_class_id, old_time, old_room)
     room_index, t, capacity = find_valid_room_SA(NeighborSchedule, target_class_cap, evaluation.room_index_dict, evaluation.professors, target_class_id)
     if not t== None:
         NeighborSchedule[old_time][old_room] = 0
         NeighborSchedule[t][room_index] = target_class_id
         NeighborPosition[target_class_id] = (t,room_index)
-        # print("reassigned, old spot becomes {}, newposition : {}".format(NeighborSchedule[old_time][old_room], NeighborPosition[target_class_id]))
     return NeighborSchedule, NeighborPosition
 
 def find_valid_room_SA(Schedule, threshold, room_index_dict, professors, class_id):
@@ -217,10 +199,6 @@ def find_valid_room_SA(Schedule, threshold, room_index_dict, professors, class_i
             room_id = rid
             capacity = cap
             index = random.randint(index, len(room_index_dict)-1) #88.4% with 5000 iteration (NS3)
-            # if index < len(room_index_dict)-1:
-            #     index += 1    #around 82.4% wiht 5000 iteration
-            # if index < len(room_index_dict)-20:
-            #     index += 20    #around 86% wiht 5000 iteration
             t = empty_timeslot_SA(Schedule, room_id, professors, class_id, index, room_index_dict)
             if not t == None:
                 break
@@ -241,9 +219,9 @@ def empty_timeslot_SA(Schedule, room_id, professors, class_id, index, room_index
                 return row
     return None
 
-def satisCalc(evaluation):
+def satisCalc(evaluation, course_name, display_failure = False):
     """A function that returns the satisfaction rate of the curent schedule associated with evaluation."""
-    return evaluation.get_eval()
+    return evaluation.get_eval(course_name, display_failure)
 
 def sort_room_cap(Class_list):
     Class_list.sort(key = lambda x: x[1])
@@ -279,8 +257,8 @@ def get_students_in_class(pref_dict, room_dict):
                         students[c] = [s]
     return students
 
-if len(sys.argv) != 5:
-    print("Usage: " + 'python3 scheduling.py' + " <constraints.txt> <student_prefs.txt> <schedule_output.txt> <#iteration>")
+if len(sys.argv) != 6:
+    print("Usage: " + 'python3 scheduling.py' + " <constraints.txt> <student_prefs.txt> <schedule_output.txt> <#iteration> <neighboring stucture id>")
     exit(1)
 start = time.time()
 parser = parser()
@@ -295,33 +273,36 @@ classes = parser.count_class_size(pref_dict) #classes is sorted by pop
 rooms = sort_room_cap(rooms)
 room_index_dict = {}
 index = 0
+
+course_name, department_pop = courseid_name()
 # find the conflict pair
-# conflict_pair, maximum = parser.conflict_pair(hc_classes, pref_dict)
-conflict_pair = {}
-maximum = 0
+if sys.argv[5] == "NS4":
+    conflict_pair, maximum = parser.conflict_pair(hc_classes, pref_dict)
+else:
+    conflict_pair = {}
+    maximum = 0
 
 for room in rooms:
     room_index_dict[index] = room
     index += 1
 schedule, position, room_dict, over_Position = scheduling(classes, students, professors, time_no_dup, rooms, hc_classes, time_group,class_major,depart_build, room_index_dict)
 student_in_class = get_students_in_class(pref_dict, room_dict)
-# write_schedule_to_file(student_in_class, professors, room_dict, schedule, sys.argv[3])
 
 sanitized = parser.sanitize_classes(hc_classes, classes)
 eval = estimation(students, pref_dict, schedule, position, sanitized, rooms, professors, room_index_dict)
-# greedy_result = satisCalc(eval)
-# print("satisfaction of greedy: {}".format(greedy_result[0]/greedy_result[1]))
+greedy_result = satisCalc(eval,course_name)
+print("Satisfaction of greedy: {}".format(greedy_result[0]/greedy_result[1]))
 # print("runtime: {}".format(end-start))
 
 # start of simulated annealing
 iterationMax = int(sys.argv[4] )
-initial_temp = Decimal(100000)
-bestsche, best_result, total = simulatedAnnealing(schedule, position, iterationMax, initial_temp, eval, conflict_pair, maximum)
+NS_id = sys.argv[5]
+bestsche, best_result, total = simulatedAnnealing(schedule, position, iterationMax, eval, conflict_pair, maximum, course_name, NS_id)
 end = time.time()
-print("iteration: {} \t runtime: {} \t SAT: {}".format(sys.argv[4],end-start, Decimal(best_result/total)*100 ))
+print("Satisfaction of Simulated Annealing:\n iteration: {} \t runtime: {} \t SAT: {}".format(sys.argv[4],end-start, Decimal(best_result/total)*100 ))
 
 # eval does not have the best schedule. #TODO
 eval.displaySchedule(time_no_dup) 
-result = satisCalc(eval)
+result = satisCalc(eval, course_name, False)
 # print("This schedule is satisfying {}% of student preference".format(Decimal(best_result/total)*100) )
 write_schedule_to_file(student_in_class, professors, room_dict, schedule, sys.argv[3])
