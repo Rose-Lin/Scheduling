@@ -32,7 +32,7 @@ Go to directory `./data/brynmawr/`
 
 To run the project, use `python3 startpj.py <number of iteration of simulated annealing> <neighboring structure> <semester>`. For more information on how to run the project, use `python3 startpj.py -h`. If you want to test the algorithm on all 30 semesters, use `all` for `<semester>`.
 
-The final human readable schedule, together with the optimality result, can be found under the directory `./preetyschedule`. Each semester will have its own schedule output. Another copy of the schedule is wirtten into `output.txt`, which is used to pass the validity test.
+The final human readable schedule, together with the optimality result, can be found under the directory `./preetyschedule`. Each semester will have its own schedule output. Another copy of the schedule is wirtten into files under `./outputschedule`, which can be passed through validity test.
 
 ### How to test the validity of the schedule
 Run `is_valid.pl` with the corresponding constraint and preference files.
