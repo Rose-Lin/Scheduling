@@ -110,7 +110,7 @@ def createNeighborSchedule_conflict_pair(evaluation, conflict_pair, maximum, i):
         if c == target_class2_id:
             target_class2_cap = pop
     # Raise error when no target2 is found in evaluation.classes. Hope this will no happen
-    if target_class1_cap == -1:
+    if target_class2_cap == -1:
         print("conflicted class not found, error!!")
         return NeighborSchedule, NeighborPosition
     old_time1 = evaluation.position[target_class1_id][0]
@@ -274,7 +274,8 @@ rooms = sort_room_cap(rooms)
 room_index_dict = {}
 index = 0
 
-course_name, department_pop = courseid_name()
+# course_name, department_pop = courseid_name()
+course_name = {}
 # find the conflict pair
 if sys.argv[5] == "NS4":
     conflict_pair, maximum = parser.conflict_pair(hc_classes, pref_dict)

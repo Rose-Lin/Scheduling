@@ -5,8 +5,9 @@ import shutil
 
 
 if len(sys.argv) == 2 and sys.argv[-1] == "-h":
-	print("Choices of <neighboring stucture>: \n NS1\t NS2\t NS3 \t NS4")
+	print("Choices of <neighboring stucture>: NS1\t NS2\t NS3 \t NS4")
 	print("For every 1000 iteration of simulated annealing, the program runs roughly 10 seconds.")
+	print("Suggested number of iterations: 2500")
 	exit(1)
 elif len(sys.argv) != 3:
 	print("Usage: " + 'python3 startpj.py' + "<# of iteration of simulated annealing> <neighboring structure>")

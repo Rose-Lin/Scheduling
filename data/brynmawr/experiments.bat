@@ -1,2 +1,0 @@
-python3 .\get_bmc_info.py '.\data\Fall 2000 - Sheet1.csv' bmcstudentpref-fall2000.txt bmcconstraints-fall2000.txt
-python3 .\scheduling.py .\bmcconstraints-fall2000.txt .\bmcstudentpref-fall2000.txt .\output.txt

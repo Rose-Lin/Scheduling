@@ -117,12 +117,6 @@ class parser:
         """conflict_pair = {class1: {class2: conflict_num}, class2: {class1: conflict_num}}"""
         conflict_pair = {}
         maximum = 0
-        # for i in range (len(hc_classes)):
-        #     rest_classes = hc_classes[:i] + hc_classes[i+1:]
-        #     rest_dict = {}
-        #     for j in rest_classes:
-        #         rest_dict[j] = 0
-        #     conflict_pair[hc_classes[i]] = rest_dict
         for student, pref_list in pref_dict.items():
             if len(pref_dict) <= 1:
                 pass
@@ -142,10 +136,6 @@ class parser:
                         conflict_pair[pref_list[j]][pref_list[i]] = 1
                     if maximum < conflict_pair[pref_list[i]][pref_list[j]]:
                         maximum = conflict_pair[pref_list[i]][pref_list[j]]
-            # for class1, d1 in conflict_pair.items():
-            #     sorted(d1.items(), reverse = True, key=lambda kv:kv[1])
-                # sorted(conflict_pair[pref_list[i]].items(), reverse = True, key=lambda kv:(kv[1], kv[0]))    
-        # print(conflict_pair)
         return conflict_pair, maximum
     
     def sort_conflict_pair(self,conflict_pair, maximum):
